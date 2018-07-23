@@ -1,5 +1,7 @@
 # IPFS DSL
 
+![IPFS Project Logo](./Ipfs.DSL.project-logo.png)
+
 A declarative embedded language for building compositional programs and protocols over the InterPlanetary File System.
 
 ## Language example (docs to come)
