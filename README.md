@@ -94,7 +94,7 @@ The other and more important typeparam is **'Cont**, it is used to capture the t
 // execution scenarios of using the IPFS API with the embedded langauge, more precisely,
 // the following two can occur:
 // (1) the program you write never terminates, and gets stuck in an infinite recursive loop
-// (2) the program iterates recursively until it reaches a value, which it returns andterminates
+// (2) the program iterates recursively until it reaches a value, which it returns and terminates
 type IpfsClientProgram<'Cont,'R> =
     // Free, the recursive step,
     // a statement in the embedded language about the next step in the program
