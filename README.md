@@ -1,12 +1,10 @@
 # IPFS DSL
 
-![Build status](https://vukovinski.visualstudio.com/_apis/public/build/definitions/5a32ab7f-c5a3-4dac-822a-9695efd3d5cb/18/badge)
-
-##
-
 ![IPFS Project Logo](./Ipfs.DSL.project-logo.png)
 
 A declarative embedded language for building compositional programs and protocols over the InterPlanetary File System.
+
+![Build status](https://vukovinski.visualstudio.com/_apis/public/build/definitions/5a32ab7f-c5a3-4dac-822a-9695efd3d5cb/18/badge)
 
 ## Language example (docs to come)
 
