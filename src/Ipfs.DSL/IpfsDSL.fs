@@ -152,93 +152,93 @@ module IpfsDSL =
 
     let ipfs = IpfsClientProgramBuilder()
 
-    let rec run : ('Cont -> Async<unit>) -> (IpfsClientProgram<'Cont,'r>) -> Async<unit> =
-        fun receiver free -> async {
+    let rec run : ('Cont -> Async<'Judgement>) -> (IpfsClientProgram<'Cont,'R>) -> Async<'Judgement> =
+        fun finalizer free -> async {
             match free with
 
-            | Return(a) -> return! receiver a
+            | Return(a) -> return! finalizer a
 
             | Free(BitswapProcedure(p, a, cont)) -> 
                 let! partialResult = BitswapDSL.interpret p a
                 let contArg = IpfsDSLResult<_>.bind partialResult
                 let nextProgram = cont contArg
-                return! run receiver nextProgram
+                return! run finalizer nextProgram
 
             | Free(BlockProcedure(p, a, cont)) ->
                 let! partialResult = BlockDSL.interpret p a
                 let contArg = IpfsDSLResult<_>.bind partialResult
                 let nextProgram = cont contArg
-                return! run receiver nextProgram
+                return! run finalizer nextProgram
 
             | Free(BootstrapProcedure(p, a, cont)) ->
                 let! partialResult = BootstrapDSL.interpret p a
                 let contArg = IpfsDSLResult<_>.bind partialResult
                 let nextProgram = cont contArg
-                return! run receiver nextProgram
+                return! run finalizer nextProgram
 
             | Free(ConfigProcedure(p, a, cont)) ->
                 let! partialResult = ConfigDSL.interpret p a
                 let contArg = IpfsDSLResult<_>.bind partialResult
                 let nextProgram = cont contArg
-                return! run receiver nextProgram
+                return! run finalizer nextProgram
 
             | Free(DagProcedure(p, a, cont)) ->
                 let! partialResult = DagDSL.interpret p a
-                let contArg = IpfsDSLResult<_>.bind partialResult
+                let contArg = IpfsDSLResult<'R>.bind partialResult
                 let nextProgram = cont contArg
-                return! run receiver nextProgram
+                return! run finalizer nextProgram
 
             | Free(DhtProcedure(p, a, cont)) ->
                 let! partialResult = DhtDSL.interpret p a
                 let contArg = IpfsDSLResult<_>.bind partialResult
                 let nextProgram = cont contArg
-                return! run receiver nextProgram
+                return! run finalizer nextProgram
 
             | Free(FileSystemProcedure(p, a, cont)) ->
                 let! partialResult = FileSystemDSL.interpret p a
                 let contArg = IpfsDSLResult<_>.bind partialResult
                 let nextProgram = cont contArg
-                return! run receiver nextProgram
+                return! run finalizer nextProgram
 
             | Free(GenericProcedure(p, a, cont)) ->
                 let! partialResult = GenericDSL.interpret p a
                 let contArg = IpfsDSLResult<_>.bind partialResult
                 let nextProgram = cont contArg
-                return! run receiver nextProgram
+                return! run finalizer nextProgram
 
             | Free(KeyProcedure(p, a, cont)) ->
                 let! partialResult = KeyDSL.interpret p a
                 let contArg = IpfsDSLResult<_>.bind partialResult
                 let nextProgram = cont contArg
-                return! run receiver nextProgram
+                return! run finalizer nextProgram
 
             | Free(NameProcedure(p, a, cont)) ->
                 let! partialResult = NameDSL.interpret p a
                 let contArg = IpfsDSLResult<_>.bind partialResult
                 let nextProgram = cont contArg
-                return! run receiver nextProgram
+                return! run finalizer nextProgram
 
             | Free(ObjectProcedure(p, a, cont)) ->
                 let! partialResult = ObjectDSL.interpret p a
                 let contArg = IpfsDSLResult<_>.bind partialResult
                 let nextProgram = cont contArg
-                return! run receiver nextProgram
+                return! run finalizer nextProgram
                 
             | Free(PinProcedure(p, a, cont)) ->
                 let! partialResult = PinDSL.interpret p a
                 let contArg = IpfsDSLResult<_>.bind partialResult
                 let nextProgram = cont contArg
-                return! run receiver nextProgram
+                return! run finalizer nextProgram
 
             | Free(PubSubProcedure(p, a, cont)) ->
                 let! partialResult = PubSubDSL.interpret p a
                 let contArg = IpfsDSLResult<_>.bind partialResult
                 let nextProgram = cont contArg
-                return! run receiver nextProgram
+                return! run finalizer nextProgram
 
             | Free(SwarmProcedure(p, a, cont)) ->
                 let! partialResult = SwarmDSL.interpret p a
                 let contArg = IpfsDSLResult<_>.bind partialResult
                 let nextProgram = cont contArg
-                return! run receiver nextProgram
+                return! run finalizer nextProgram
         }
