@@ -1,17 +1,19 @@
 namespace Ipfs.DSL
-open Ipfs
-open Ipfs.Api
-open Ipfs.CoreApi
-open System
-open System.IO
-open System.Threading
-open System.Collections.Generic
-open Newtonsoft.Json.Linq
-open FSharpPlus
-open FSharp.Control
 
 [<AutoOpen>]
 module SubDSLs =
+    open Ipfs
+    open Ipfs.Api
+    open Ipfs.CoreApi
+    open System
+    open System.IO
+    open System.Threading
+    open System.Collections.Generic
+    open Newtonsoft.Json.Linq
+    open FSharpPlus
+    open FSharp.Control
+    open Effects
+
 
     [<AutoOpen>]
     module BitswapDSL =
@@ -21,6 +23,7 @@ module SubDSLs =
         // 3. [x] private low-level interop "calls" that are bound to the expressions of the language
         // 4. [x] surface area - public functions that build expressions to support the embedded language
         // 5. [x] interpreter
+        // 6. [x] contexts as entrypoint for foreign code
 
         // 1. the embedded language specification
         type BitswapDSL =
@@ -87,6 +90,14 @@ module SubDSLs =
             | _,_ -> return Err
         }
 
+        // 6. contexts as entrypoint for foreign code
+        type BitswapDSLContext<'T> = Effect<BitswapDSL,'T>
+        type BitswapDSLArgsContext<'T> = Effect<BitswapDSLArgs,'T>
+        type BitswapDSLResultContext<'T> = Effect<BitswapDSLResult,'T>
+
+        type BitswapDSLEffect<'T> = Effect<'T,BitswapDSL>
+        type BitswapDSLArgsEffect<'T> = Effect<'T,BitswapDSLArgs>
+        type BitswapDSLResultEffect<'T> = Effect<'T,BitswapDSLResult>
     
     type private BlockData = byte[]
     type private ContentType = string
@@ -103,6 +114,7 @@ module SubDSLs =
         // 3. [x] private low-level interop "calls" that are bound to the expressions of the language
         // 4. [x] surface area - public functions that build expressions to support the embedded language
         // 5. [x] interpreters
+        // 6. [x] contexts as entrypoint for foreign code
         
         // 1. the embedded language specification
         type BlockDSL =
@@ -211,6 +223,15 @@ module SubDSLs =
             | _,_ -> return Err
         }
 
+        // 6. contexts as entrypoint for foreign code
+        type BlockDSLContext<'T> = Effect<BlockDSL,'T>
+        type BlockDSLArgsContext<'T> = Effect<BlockDSLArgs,'T>
+        type BlockDSLResultContext<'T> = Effect<BlockDSLResult,'T>
+
+        type BlockDSLEffect<'T> = Effect<'T,BlockDSL>
+        type BlockDSLArgsEffect<'T> = Effect<'T,BlockDSLArgs>
+        type BlockDSLResultEffect<'T> = Effect<'T,BlockDSLResult>
+
     [<AutoOpen>]
     module BootstrapDSL =
         
@@ -219,6 +240,7 @@ module SubDSLs =
         // 3. [x] private low-level interop "calls" that are bound to the expressions of the language
         // 4. [x] surface area - public functions that build expressions to support the embedded language
         // 5. [x] interpreters
+        // 6. [x] contexts as entrypoint for foreign code
 
         // 1. the embedded language specification
         type BootstrapDSL =
@@ -316,6 +338,15 @@ module SubDSLs =
             | _,_ -> return Err
         }
 
+        // 6. contexts as entrypoint for foreign code
+        type BootstrapDSLContext<'T> = Effect<BootstrapDSL,'T>
+        type BootstrapDSLArgsContext<'T> = Effect<BootstrapDSLArgs,'T>
+        type BootstrapDSLResultContext<'T> = Effect<BootstrapDSLResult,'T>
+        
+        type BootstrapDSLEffect<'T> = Effect<'T,BootstrapDSL>
+        type BootstrapDSLArgsEffect<'T> = Effect<'T,BootstrapDSLArgs>
+        type BootstrapDSLResultEffect<'T> = Effect<'T,BootstrapDSLResult>
+
     type private ConfigKey = string
 
     [<AutoOpen>]
@@ -326,6 +357,7 @@ module SubDSLs =
         // 3. [x] private low-level interop "calls" that are bound to the expressions of the language
         // 4. [x] surface area - public functions that build expressions to support the embedded language
         // 5. [x] interpreters
+        // 6. [x] contexts as entrypoint for foreign code
 
         // 1. the embedded language specification
         type ConfigDSL =
@@ -415,6 +447,15 @@ module SubDSLs =
             | _,_ -> return Err
         }
 
+        // 6. contexts
+        type ConfigDSLContext<'T> = Effect<ConfigDSL,'T>
+        type ConfigDSLArgsContext<'T> = Effect<ConfigDSLArgs,'T>
+        type ConfigDSLResultContext<'T> = Effect<ConfigDSLResult,'T>
+             
+        type ConfigDSLEffect<'T> = Effect<'T,ConfigDSL>
+        type ConfigDSLArgsEffect<'T> = Effect<'T,ConfigDSLArgs>
+        type ConfigDSLResultEffect<'T> = Effect<'T,ConfigDSLResult>
+
     [<AutoOpen>]
     module DagDSL =
 
@@ -423,6 +464,7 @@ module SubDSLs =
         // 3. [x] private low-level interop "calls" that are bound to the expressions of the language
         // 4. [x] surface area - public functions that build expressions to support the embedded language
         // 5. [x] interpreters
+        // 6. [x] contexts as entrypoint for foreign code
 
         // 1. the embedded language specification
         type DagDSL<'Result> =
@@ -479,6 +521,22 @@ module SubDSLs =
             | GetJSONObjectResult of Async<JObject>
             | GetJSONTokenResult of Async<JToken>
             | GetNativeTResult of Async<'Native>
+
+        let flatMapResult : ('a -> 'b) -> (DagDSLResult<'a>) -> DagDSLResult<'b> =
+            fun f ->
+                function
+                | Err -> Err
+                | PutJSONResult(r) -> PutJSONResult(r)
+                | PutNativeResult(r) -> PutNativeResult(r)
+                | PutStreamResult(r) -> PutStreamResult(r)
+                | GetJSONObjectResult(r) -> GetJSONObjectResult(r)
+                | GetJSONTokenResult(r) -> GetJSONTokenResult(r)
+                | GetNativeTResult(r) -> 
+                    let r' = async {
+                        let! result = r
+                        return f result
+                    }
+                    GetNativeTResult(r')
 
         // 3. private low-level interop "calls" that are bound to the expressions of the language
         let inline private putJSONCall (client:IpfsClient) (t: JObject * ContentType * HashAlgorithm * Encoding * Pin * Cto) = async {
@@ -552,6 +610,21 @@ module SubDSLs =
             | _,_ -> return Err
         }
 
+        // 6. contexts as entrypoint for foreign code
+        type DagDSLContext<'T,'a> = Effect<DagDSL<'a>,'T>
+        type DagDSLArgsContext<'T> = Effect<DagDSLArgs,'T>
+        type DagDSLResultContext<'T,'a> = Effect<DagDSLResult<'a>,'T>
+
+        let rec flatMapResultCtx : (DagDSLResultContext<'T,'a> -> DagDSLResultContext<'T,'b>) -> (DagDSLResultContext<'T,'a>) -> (DagDSLResultContext<'T,'b>) =
+            fun f ctx -> effect {
+                let e = f ctx
+                return! e
+            }
+             
+        type DagDSLEffect<'T,'a> = Effect<'T,DagDSL<'a>>
+        type DagDSLArgsEffect<'T> = Effect<'T,DagDSLArgs>
+        type DagDSLResultEffect<'T,'a> = Effect<'T,DagDSLResult<'a>>
+
     [<AutoOpen>]
     module DhtDSL =
         
@@ -560,6 +633,7 @@ module SubDSLs =
         // 3. [x] private low-level interop "calls" that are bound to the expressions of the language
         // 4. [x] surface area - public functions that build expressions to support the embedded language
         // 5. [x] interpreters
+        // 6. [x] contexts as entrypoint for foreign code
 
         // 1. the embedded language specification (degenerately generic)
         type DhtDSL =
@@ -612,6 +686,15 @@ module SubDSLs =
             | _,_ -> return Err
         }
 
+        // 6. contexts as entrypoint for foreign code
+        type DhtDSLContext<'T> = Effect<DhtDSL,'T>
+        type DhtDSLArgsContext<'T> = Effect<DhtDSLArgs,'T>
+        type DhtDSLResultContext<'T> = Effect<DhtDSLResult,'T>
+             
+        type DhtDSLEffect<'T> = Effect<'T,DhtDSL>
+        type DhtDSLArgsEffect<'T> = Effect<'T,DhtDSLArgs>
+        type DhtDSLResultEffect<'T> = Effect<'T,DhtDSLResult>
+
     type private Recursive = bool
 
     [<AutoOpen>]
@@ -622,7 +705,8 @@ module SubDSLs =
         // 3. [x] private low-level interop "calls" that are bound to the expressions of the language
         // 4. [x] surface area - public functions that build expressions to support the embedded language
         // 5. [x] interpreters
-        
+        // 6. [x] contexts as entrypoint for foreign code
+
         // 1. the embedded language specification
         type DnsDSL =
             private
@@ -655,6 +739,15 @@ module SubDSLs =
             match expression, args with
             | Resolve(f), ResolveArgs(a) -> return ResolveResult(f a)
         }
+
+        // 6. contexts as entrypoint for foreign code
+        type DnsDSLContext<'T> = Effect<DnsDSL,'T>
+        type DnsDSLArgsContext<'T> = Effect<DnsDSLArgs,'T>
+        type DnsDSLResultContext<'T> = Effect<DnsDSLResult,'T>
+        
+        type DnsDSLEffect<'T> = Effect<'T,DnsDSL>
+        type DnsDSLArgsEffect<'T> = Effect<'T,DnsDSLArgs>
+        type DnsDSLResultEffect<'T> = Effect<'T,DnsDSLResult>
     
     type private FileOptions = AddFileOptions
     type private FilePath = string
@@ -669,6 +762,7 @@ module SubDSLs =
         // 3. [x] private low-level interop "calls" that are bound to the expressions of the language
         // 4. [x] surface area - public functions that build expressions to support the embedded language
         // 5. [x] interpreters
+        // 6. [x] contexts as entrypoint for foreign code
 
         // 1. the embedded language specification
         type FileSystemDSL =
@@ -792,6 +886,15 @@ module SubDSLs =
             | _,_ -> return Err
         }
 
+        // 6. contexts as entrypoint for foreign code
+        type FileSystemDSLContext<'T> = Effect<FileSystemDSL,'T>
+        type FileSystemDSLArgsContext<'T> = Effect<FileSystemDSLArgs,'T>
+        type FileSystemDSLResultContext<'T> = Effect<FileSystemDSLResult,'T>
+        
+        type FileSystemDSLEffect<'T> = Effect<'T,FileSystemDSL>
+        type FileSystemDSLArgsEffect<'T> = Effect<'T,FileSystemDSLArgs>
+        type FileSystemDSLResultEffect<'T> = Effect<'T,FileSystemDSLResult>
+
     [<AutoOpen>]
     module GenericDSL =
 
@@ -800,6 +903,7 @@ module SubDSLs =
         // 3. [x] private low-level interop "calls" that are bound to the expressions of the language
         // 4. [x] surface area - public functions that build expressions to support the embedded language
         // 5. [x] interpreters
+        // 6. [x] contexts as entrypoint for foreign code
 
         // 1. the embedded language specification
         type GenericDSL =
@@ -875,6 +979,15 @@ module SubDSLs =
             | _,_ -> return Err
         }
 
+        // 6. contexts as entrypoint for foreign code
+        type GenericDSLContext<'T> = Effect<GenericDSL,'T>
+        type GenericDSLArgsContext<'T> = Effect<GenericDSLArgs,'T>
+        type GenericDSLResultContext<'T> = Effect<GenericDSLResult,'T>
+        
+        type GenericDSLEffect<'T> = Effect<'T,GenericDSL>
+        type GenericDSLArgsEffect<'T> = Effect<'T,GenericDSLArgs>
+        type GenericDSLResultEffect<'T> = Effect<'T,GenericDSLResult>
+
     type private KeyName = string
     type private KeyType = string
     type private KeySize = int
@@ -887,6 +1000,7 @@ module SubDSLs =
         // 3. [x] private low-level interop "calls" that are bound to the expressions of the language
         // 4. [x] surface area - public functions that build expressions to support the embedded language
         // 5. [x] interpreters
+        // 6. [x] contexts as entrypoint for foreign code
 
         // 1. the embedded language specification
         type KeyDSL =
@@ -954,6 +1068,15 @@ module SubDSLs =
             | _,_ -> return Err
         }
 
+        // 6. contexts as entrypoint for foreign code
+        type KeyDSLContext<'T> = Effect<KeyDSL,'T>
+        type KeyDSLArgsContext<'T> = Effect<KeyDSLArgs,'T>
+        type KeyDSLResultContext<'T> = Effect<KeyDSLResult,'T>
+        
+        type KeyDSLEffect<'T> = Effect<'T,KeyDSL>
+        type KeyDSLArgsEffect<'T> = Effect<'T,KeyDSLArgs>
+        type KeyDSLResultEffect<'T> = Effect<'T,KeyDSLResult>
+
     type private Resolve = bool
     type private TimeSpan' = TimeSpan option
     type private NoCache = bool
@@ -967,6 +1090,7 @@ module SubDSLs =
         // 3. [x] private low-level interop "calls" that are bound to the expressions of the language
         // 4. [x] surface area - public functions that build expressions to support the embedded language
         // 5. [x] interpreters
+        // 6. [x] contexts as entrypoint for foreign code
 
         // 1. the embedded language specification
         type NameDSL =
@@ -1041,6 +1165,15 @@ module SubDSLs =
             | _,_ -> return Err
         }
 
+        // 6. contexts as entrypoint for foreign code
+        type NameDSLContext<'T> = Effect<NameDSL,'T>
+        type NameDSLArgsContext<'T> = Effect<NameDSLArgs,'T>
+        type NameDSLResultContext<'T> = Effect<NameDSLResult,'T>
+        
+        type NameDSLEffect<'T> = Effect<'T,NameDSL>
+        type NameDSLArgsEffect<'T> = Effect<'T,NameDSLArgs>
+        type NameDSLResultEffect<'T> = Effect<'T,NameDSLResult>
+
     type private ObjectTemplate = string
     type private MerkleLinks = IMerkleLink seq
 
@@ -1052,6 +1185,7 @@ module SubDSLs =
         // 3. [x] private low-level interop "calls" that are bound to the expressions of the language
         // 4. [x] surface area - public functions that build expressions to support the embedded language
         // 5. [x] interpreters
+        // 6. [x] contexts as entrypoint for foreign code
 
         // 1. the embedded language specification
         type ObjectDSL =
@@ -1175,6 +1309,15 @@ module SubDSLs =
             | _,_ -> return Err
         }
 
+        // 6. contexts as entrypoint for foreign code
+        type ObjectDSLContext<'T> = Effect<ObjectDSL,'T>
+        type ObjectDSLArgsContext<'T> = Effect<ObjectDSLArgs,'T>
+        type ObjectDSLResultContext<'T> = Effect<ObjectDSLResult,'T>
+        
+        type ObjectDSLEffect<'T> = Effect<'T,ObjectDSL>
+        type ObjectDSLArgsEffect<'T> = Effect<'T,ObjectDSLArgs>
+        type ObjectDSLResultEffect<'T> = Effect<'T,ObjectDSLResult>
+
     [<AutoOpen>]
     module PinDSL =
 
@@ -1183,6 +1326,7 @@ module SubDSLs =
         // 3. [x] private low-level interop "calls" that are bound to the expressions of the language
         // 4. [x] surface area - public functions that build expressions to support the embedded language
         // 5. [x] interpreters
+        // 6. [x] contexts as entrypoint for foreign code
 
         // 1. the embedded language specification
         type PinDSL =
@@ -1257,6 +1401,15 @@ module SubDSLs =
             | _,_ -> return Err
         }
 
+        // 6. contexts as entrypoint for foreign code
+        type PinDSLContext<'T> = Effect<PinDSL,'T>
+        type PinDSLArgsContext<'T> = Effect<PinDSLArgs,'T>
+        type PinDSLResultContext<'T> = Effect<PinDSLResult,'T>
+        
+        type PinDSLEffect<'T> = Effect<'T,PinDSL>
+        type PinDSLArgsEffect<'T> = Effect<'T,PinDSLArgs>
+        type PinDSLResultEffect<'T> = Effect<'T,PinDSLResult>
+
     type private Topic = string
     type private Message = string
 
@@ -1268,6 +1421,7 @@ module SubDSLs =
         // 3. [x] private low-level interop "calls" that are bound to the expressions of the language
         // 4. [x] surface area - public functions that build expressions to support the embedded language
         // 5. [x] interpreters
+        // 6. [x] contexts as entrypoint for foreign code
 
         // 1. the embedded language specification
         type PubSubDSL =
@@ -1349,6 +1503,15 @@ module SubDSLs =
             | Subscribe(f), SubscribeArgs(a) -> return SubscribeResult(f a)
             | _,_ -> return Err
         }
+
+        // 6. contexts as entrypoint for foreign code
+        type PubSubDSLContext<'T> = Effect<PubSubDSL,'T>
+        type PubSubDSLArgsContext<'T> = Effect<PubSubDSLArgs,'T>
+        type PubSubDSLResultContext<'T> = Effect<PubSubDSLResult,'T>
+        
+        type PubSubDSLEffect<'T> = Effect<'T,PubSubDSL>
+        type PubSubDSLArgsEffect<'T> = Effect<'T,PubSubDSLArgs>
+        type PubSubDSLResultEffect<'T> = Effect<'T,PubSubDSLResult>
     
     type private Persist = bool
 
@@ -1360,6 +1523,7 @@ module SubDSLs =
         // 3. [x] private low-level interop "calls" that are bound to the expressions of the language
         // 4. [x] surface area - public functions that build expressions to support the embedded language
         // 5. [x] interpreters
+        // 6. [x] contexts as entrypoint for foreign code
 
         // 1. the embedded language specification
         type SwarmDSL =
@@ -1489,3 +1653,12 @@ module SubDSLs =
             | RemoveAddressFilter(f), RemoveAddressFilterArgs(a) -> return RemoveAddressFilterResult(f a)
             | _,_ -> return Err
         }
+
+        // 6. contexts as entrypoint for foreign code
+        type SwarmDSLContext<'T> = Effect<SwarmDSL,'T>
+        type SwarmDSLArgsContext<'T> = Effect<SwarmDSLArgs,'T>
+        type SwarmDSLResultContext<'T> = Effect<SwarmDSLResult,'T>
+        
+        type SwarmDSLEffect<'T> = Effect<'T,SwarmDSL>
+        type SwarmDSLArgsEffect<'T> = Effect<'T,SwarmDSLArgs>
+        type SwarmDSLResultEffect<'T> = Effect<'T,SwarmDSLResult>
