@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <Compile Include="Cancellation.fs" />
+    <Compile Include="Effects.fs" />
     <Compile Include="SubDSLs.fs" />
     <Compile Include="IpfsDSL.fs" />
     <Compile Include="Programs.fs" />
