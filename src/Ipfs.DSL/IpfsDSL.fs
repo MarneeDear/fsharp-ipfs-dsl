@@ -3,61 +3,46 @@
 [<AutoOpen>]
 module IpfsDSL =
     open SubDSLs
-        
-    type IpfsDSLResult<'R> =
-        | BitswapR    of BitswapDSLResult
-        | BlockR      of BlockDSLResult
-        | BootstrapR  of BootstrapDSLResult
-        | ConfigR     of ConfigDSLResult
-        | DagR        of DagDSLResult<'R>
-        | DhtR        of DhtDSLResult
-        | FileSystemR of FileSystemDSLResult
-        | GenericR    of GenericDSLResult
-        | KeyR        of KeyDSLResult
-        | NameR       of NameDSLResult
-        | ObjectR     of ObjectDSLResult
-        | PinR        of PinDSLResult
-        | PubSubR     of PubSubDSLResult
-        | SwarmR      of SwarmDSLResult
-        static member bind (result:BitswapDSLResult) = BitswapR(result)
-        static member bind (result:BlockDSLResult) = BlockR(result)
-        static member bind (result:BootstrapDSLResult) = BootstrapR(result)
-        static member bind (result:ConfigDSLResult) = ConfigR(result)
-        static member bind (result:DagDSLResult<'R>) = DagR(result)
-        static member bind (result:DhtDSLResult) = DhtR(result)
-        static member bind (result:FileSystemDSLResult) = FileSystemR(result)
-        static member bind (result:GenericDSLResult) = GenericR(result)
-        static member bind (result:KeyDSLResult) = KeyR(result)
-        static member bind (result:NameDSLResult) = NameR(result)
-        static member bind (result:ObjectDSLResult) = ObjectR(result)
-        static member bind (result:PinDSLResult) = PinR(result)
-        static member bind (result:PubSubDSLResult) = PubSubR(result)
-        static member bind (result:SwarmDSLResult) = SwarmR(result)
+    open Effects  
 
-    type IpfsDSL<'Cont,'R> =
-        | BitswapProcedure    of expr:BitswapDSL    * args:BitswapDSLArgs      * cback:(IpfsDSLResult<'R> -> 'Cont)
-        | BlockProcedure      of expr:BlockDSL      * args:BlockDSLArgs        * cback:(IpfsDSLResult<'R> -> 'Cont)
-        | BootstrapProcedure  of expr:BootstrapDSL  * args:BootstrapDSLArgs    * cback:(IpfsDSLResult<'R> -> 'Cont)
-        | ConfigProcedure     of expr:ConfigDSL     * args:ConfigDSLArgs       * cback:(IpfsDSLResult<'R> -> 'Cont)
-        | DagProcedure        of expr:DagDSL<'R>    * args:DagDSLArgs          * cback:(IpfsDSLResult<'R> -> 'Cont)
-        | DhtProcedure        of expr:DhtDSL        * args:DhtDSLArgs          * cback:(IpfsDSLResult<'R> -> 'Cont)
-        | FileSystemProcedure of expr:FileSystemDSL * args:FileSystemDSLArgs   * cback:(IpfsDSLResult<'R> -> 'Cont)
-        | GenericProcedure    of expr:GenericDSL    * args:GenericDSLArgs      * cback:(IpfsDSLResult<'R> -> 'Cont)
-        | KeyProcedure        of expr:KeyDSL        * args:KeyDSLArgs          * cback:(IpfsDSLResult<'R> -> 'Cont)
-        | NameProcedure       of expr:NameDSL       * args:NameDSLArgs         * cback:(IpfsDSLResult<'R> -> 'Cont)
-        | ObjectProcedure     of expr:ObjectDSL     * args:ObjectDSLArgs       * cback:(IpfsDSLResult<'R> -> 'Cont)
-        | PinProcedure        of expr:PinDSL        * args:PinDSLArgs          * cback:(IpfsDSLResult<'R> -> 'Cont)
-        | PubSubProcedure     of expr:PubSubDSL     * args:PubSubDSLArgs       * cback:(IpfsDSLResult<'R> -> 'Cont)
-        | SwarmProcedure      of expr:SwarmDSL      * args:SwarmDSLArgs        * cback:(IpfsDSLResult<'R> -> 'Cont)
+    type IpfsDSL<'Cont,'Ctx,'R> =
+        | BitswapProcedure    of pexpr:BitswapDSLEffect<'Ctx>    * pargs:BitswapDSLArgsEffect<'Ctx>    * cback:BitswapDSLResultContext<'Cont>
+        | BlockProcedure      of pexpr:BlockDSLEffect<'Ctx>      * pargs:BlockDSLArgsEffect<'Ctx>      * cback:BlockDSLResultContext<'Cont>
+        | BootstrapProcedure  of pexpr:BootstrapDSLEffect<'Ctx>  * pargs:BootstrapDSLArgsEffect<'Ctx>  * cback:BootstrapDSLResultContext<'Cont>
+        | ConfigProcedure     of pexpr:ConfigDSLEffect<'Ctx>     * pargs:ConfigDSLArgsEffect<'Ctx>     * cback:ConfigDSLResultContext<'Cont>
+        | DagProcedure        of pexpr:DagDSLEffect<'Ctx,'R>     * pargs:DagDSLArgsEffect<'Ctx>        * cback:DagDSLResultContext<'Cont,'R>
+        | DhtProcedure        of pexpr:DhtDSLEffect<'Ctx>        * pargs:DhtDSLArgsEffect<'Ctx>        * cback:DhtDSLResultContext<'Cont>
+        | FileSystemProcedure of pexpr:FileSystemDSLEffect<'Ctx> * pargs:FileSystemDSLArgsEffect<'Ctx> * cback:FileSystemDSLResultContext<'Cont>
+        | GenericProcedure    of pexpr:GenericDSLEffect<'Ctx>    * pargs:GenericDSLArgsEffect<'Ctx>    * cback:GenericDSLResultContext<'Cont>
+        | KeyProcedure        of pexpr:KeyDSLEffect<'Ctx>        * pargs:KeyDSLArgsEffect<'Ctx>        * cback:KeyDSLResultContext<'Cont>
+        | NameProcedure       of pexpr:NameDSLEffect<'Ctx>       * pargs:NameDSLArgsEffect<'Ctx>       * cback:NameDSLResultContext<'Cont>
+        | ObjectProcedure     of pexpr:ObjectDSLEffect<'Ctx>     * pargs:ObjectDSLArgsEffect<'Ctx>     * cback:ObjectDSLResultContext<'Cont>
+        | PinProcedure        of pexpr:PinDSLEffect<'Ctx>        * pargs:PinDSLArgsEffect<'Ctx>        * cback:PinDSLResultContext<'Cont>
+        | PubSubProcedure     of pexpr:PubSubDSLEffect<'Ctx>     * pargs:PubSubDSLArgsEffect<'Ctx>     * cback:PubSubDSLResultContext<'Cont>
+        | SwarmProcedure      of pexpr:SwarmDSLEffect<'Ctx>      * pargs:SwarmDSLArgsEffect<'Ctx>      * cback:SwarmDSLResultContext<'Cont>
 
-    let rec flatMapR : ('a -> 'b) -> (IpfsDSL<'Cont,'a>) -> (IpfsDSL<'Cont,'b>) =
-        fun f ->
+    let flatMapR : ('a -> 'b) -> (DagDSLResultContext<'Cont,'a> -> DagDSLResultContext<'Cont,'b>) -> (IpfsDSL<'Cont,'ctx,'a>) -> (IpfsDSL<'Cont,'ctx,'b>) =
+        fun f alpha ->
             function
             | BitswapProcedure(proc, args, g)    -> BitswapProcedure(proc, args, g)
             | BlockProcedure(proc, args, g)      -> BlockProcedure(proc, args, g)
             | BootstrapProcedure(proc, args, g)  -> BootstrapProcedure(proc, args, g)
             | ConfigProcedure(proc, args, g)     -> ConfigProcedure(proc, args, g)
-            | DagProcedure(proc, args, g)        -> DagProcedure(DagDSL.flatMap f proc, args, g)
+
+            | DagProcedure(proc, args, g) ->
+
+                // apply f to the DSL command
+                let proc' = effect {
+                    let! r = proc
+                    return DagDSL.flatMap f r
+                }
+
+                // apply alpha to the result context
+                let g' = DagDSL.flatMapResultCtx alpha g
+
+                // return transformed
+                DagProcedure(proc', args, g')
+
             | DhtProcedure(proc, args, g)        -> DhtProcedure(proc, args, g)
             | FileSystemProcedure(proc, args, g) -> FileSystemProcedure(proc, args, g)
             | GenericProcedure(proc, args, g)    -> GenericProcedure(proc, args, g)
@@ -68,7 +53,7 @@ module IpfsDSL =
             | PubSubProcedure(proc, args, g)     -> PubSubProcedure(proc, args, g)
             | SwarmProcedure(proc, args, g)      -> SwarmProcedure(proc, args, g)
 
-    let rec flatMap : ('a -> 'b) -> (IpfsDSL<'a,'R>) -> (IpfsDSL<'b,'R>) =
+    let flatMap : ('a -> 'b) -> (IpfsDSL<'a,'ctx,'R>) -> (IpfsDSL<'b,'ctx,'R>) =
         fun f ->
             function
             | BitswapProcedure(proc, args, g)    -> BitswapProcedure(proc, args, g >> f)
@@ -116,129 +101,146 @@ module IpfsDSL =
         static member bind (args:PinDSLArgs) = PinA(args)
         static member bind (args:PubSubDSLArgs) = PubSubA(args)
         static member bind (args:SwarmDSLArgs) = SwarmA(args)
-        
-    /// the "free monad", also called a program, this little recursive structure models all possible
-    /// execution scenarios of using the IPFS API with the embedded langauge, more precisely,
-    /// the following two can occur:
-    /// (1) the program you write never terminates, and gets stuck in an infinite recursive loop
-    /// (2) the program iterates recursively until it reaches a value, which it returns and terminates
-    type IpfsClientProgram<'Cont,'R> =
-        /// Free, the recursive step,
-        /// a statement in the embedded language about the next step in the program
-        | Free of IpfsDSL<IpfsClientProgram<'Cont,'R>,'R>
+      
+    type IpfsClientProgram<'Next, 'Context, 'Produces, 'DagOut> =
 
-        /// Return, the final state,
-        /// a pure value returned by the program
-        | Return of 'Cont
+        /// an expression in the embedded language about the next step in the program
+        | Step of program:IpfsDSL<IpfsClientProgram<'Next,'Context,'Produces,'DagOut>,'Context,'DagOut>
+    
+        /// a branching step depending on the result of the effectful computation
+        | Branch of visible:Effect<'Context,'Produces> * program:('Produces -> IpfsDSL<IpfsClientProgram<'Next,'Context,'Produces,'DagOut>,'Context,'DagOut>)
 
-    /// binds fsharp (and embedded) expressions into programs of the embedded language 
-    let rec bindFree : ('a -> IpfsClientProgram<'b,'r>) -> IpfsClientProgram<'a,'r> -> IpfsClientProgram<'b,'r> =
+        /// the final step, produces a value or a new program
+        | Return of value:'Next
+
+    /// binds fsharp and embedded language expressions into programs of the embedded language
+    let rec bindFreer : ('a -> IpfsClientProgram<'b,'ctx,'p,'o>) -> IpfsClientProgram<'a,'ctx,'p,'o> -> IpfsClientProgram<'b,'ctx,'p,'o> =
         fun f ->
             function
-            | Free(clientDSL) -> Free(flatMap (bindFree f) clientDSL)
-            | Return(expression) -> f expression
+            | Step(clientDSL) -> Step(flatMap (bindFreer f) clientDSL)
+            | Branch(eff, program) -> Branch(eff, fun x -> flatMap (bindFreer f) (program x))
+            | Return(value) -> f value
 
     /// lifts expressions of the embedded language into programs of the embedded language
-    let liftFree : IpfsDSL<'a,'r> -> IpfsClientProgram<'a,'r> =
-        fun statement -> Free (flatMap Return statement)
+    let liftFreer : IpfsDSL<'a,'ctx,'r> -> IpfsClientProgram<'a,'ctx,'p,'r> =
+        fun statement -> Step (flatMap Return statement)
 
     type IpfsClientProgramBuilder() =
         member this.Return              x = Return x
         member this.ReturnFrom          x = x
         member this.Zero               () = Return ()
-        member this.Bind          (ma, f) = bindFree f ma
+        member this.Bind          (ma, f) = bindFreer f ma
         member this.Delay (f: unit -> 'a) = f
         member this.Run               (f) = f()
 
     let ipfs = IpfsClientProgramBuilder()
 
-    let rec run : ('Cont -> Async<'Judgement>) -> (IpfsClientProgram<'Cont,'R>) -> Async<'Judgement> =
-        fun finalizer free -> async {
-            match free with
+    let rec run : ('ctx) -> (IpfsClientProgram<'a, 'ctx, 'p, 'o>) -> Async<'a> =
+        fun ctx freer -> async {
+            match freer with
 
-            | Return(a) -> return! finalizer a
+            | Return(a) -> return a
 
-            | Free(BitswapProcedure(p, a, cont)) -> 
-                let! partialResult = BitswapDSL.interpret p a
-                let contArg = IpfsDSLResult<_>.bind partialResult
-                let nextProgram = cont contArg
-                return! run finalizer nextProgram
+            | Branch(eff, conditionalProgram) -> 
+                let branchResult = runEffect ctx eff
+                let program = conditionalProgram branchResult
+                return! run ctx (Step program)
 
-            | Free(BlockProcedure(p, a, cont)) ->
-                let! partialResult = BlockDSL.interpret p a
-                let contArg = IpfsDSLResult<_>.bind partialResult
-                let nextProgram = cont contArg
-                return! run finalizer nextProgram
+            | Step(BitswapProcedure(p, a, cont)) ->
+                let p' = runEffect ctx p
+                let a' = runEffect ctx a
+                let! partialResult = BitswapDSL.interpret p' a'
+                let nextProgram = cont partialResult
+                return! run ctx nextProgram
 
-            | Free(BootstrapProcedure(p, a, cont)) ->
-                let! partialResult = BootstrapDSL.interpret p a
-                let contArg = IpfsDSLResult<_>.bind partialResult
-                let nextProgram = cont contArg
-                return! run finalizer nextProgram
+            | Step(BlockProcedure(p, a, cont)) ->
+                let p' = runEffect ctx p
+                let a' = runEffect ctx a
+                let! partialResult = BlockDSL.interpret p' a'
+                let nextProgram = cont partialResult
+                return! run ctx nextProgram
 
-            | Free(ConfigProcedure(p, a, cont)) ->
-                let! partialResult = ConfigDSL.interpret p a
-                let contArg = IpfsDSLResult<_>.bind partialResult
-                let nextProgram = cont contArg
-                return! run finalizer nextProgram
+            | Step(BootstrapProcedure(p, a, cont)) ->
+                let p' = runEffect ctx p
+                let a' = runEffect ctx a
+                let! partialResult = BootstrapDSL.interpret p' a'
+                let nextProgram = cont partialResult
+                return! run ctx nextProgram
 
-            | Free(DagProcedure(p, a, cont)) ->
-                let! partialResult = DagDSL.interpret p a
-                let contArg = IpfsDSLResult<'R>.bind partialResult
-                let nextProgram = cont contArg
-                return! run finalizer nextProgram
+            | Step(ConfigProcedure(p, a, cont)) ->
+                let p' = runEffect ctx p
+                let a' = runEffect ctx a
+                let! partialResult = ConfigDSL.interpret p' a'
+                let nextProgram = cont partialResult
+                return! run ctx nextProgram
 
-            | Free(DhtProcedure(p, a, cont)) ->
-                let! partialResult = DhtDSL.interpret p a
-                let contArg = IpfsDSLResult<_>.bind partialResult
-                let nextProgram = cont contArg
-                return! run finalizer nextProgram
+            | Step(DagProcedure(p, a, cont)) ->
+                let p' = runEffect ctx p
+                let a' = runEffect ctx a
+                let! partialResult = DagDSL.interpret p' a'
+                let nextProgram = cont partialResult
+                return! run ctx nextProgram
 
-            | Free(FileSystemProcedure(p, a, cont)) ->
-                let! partialResult = FileSystemDSL.interpret p a
-                let contArg = IpfsDSLResult<_>.bind partialResult
-                let nextProgram = cont contArg
-                return! run finalizer nextProgram
+            | Step(DhtProcedure(p, a, cont)) ->
+                let p' = runEffect ctx p
+                let a' = runEffect ctx a
+                let! partialResult = DhtDSL.interpret p' a'
+                let nextProgram = cont partialResult
+                return! run ctx nextProgram
 
-            | Free(GenericProcedure(p, a, cont)) ->
-                let! partialResult = GenericDSL.interpret p a
-                let contArg = IpfsDSLResult<_>.bind partialResult
-                let nextProgram = cont contArg
-                return! run finalizer nextProgram
+            | Step(FileSystemProcedure(p, a, cont)) ->
+                let p' = runEffect ctx p
+                let a' = runEffect ctx a
+                let! partialResult = FileSystemDSL.interpret p' a'
+                let nextProgram = cont partialResult
+                return! run ctx nextProgram
 
-            | Free(KeyProcedure(p, a, cont)) ->
-                let! partialResult = KeyDSL.interpret p a
-                let contArg = IpfsDSLResult<_>.bind partialResult
-                let nextProgram = cont contArg
-                return! run finalizer nextProgram
+            | Step(GenericProcedure(p, a, cont)) ->
+                let p' = runEffect ctx p
+                let a' = runEffect ctx a
+                let! partialResult = GenericDSL.interpret p' a'
+                let nextProgram = cont partialResult
+                return! run ctx nextProgram
 
-            | Free(NameProcedure(p, a, cont)) ->
-                let! partialResult = NameDSL.interpret p a
-                let contArg = IpfsDSLResult<_>.bind partialResult
-                let nextProgram = cont contArg
-                return! run finalizer nextProgram
+            | Step(KeyProcedure(p, a, cont)) ->
+                let p' = runEffect ctx p
+                let a' = runEffect ctx a
+                let! partialResult = KeyDSL.interpret p' a'
+                let nextProgram = cont partialResult
+                return! run ctx nextProgram
 
-            | Free(ObjectProcedure(p, a, cont)) ->
-                let! partialResult = ObjectDSL.interpret p a
-                let contArg = IpfsDSLResult<_>.bind partialResult
-                let nextProgram = cont contArg
-                return! run finalizer nextProgram
+            | Step(NameProcedure(p, a, cont)) ->
+                let p' = runEffect ctx p
+                let a' = runEffect ctx a
+                let! partialResult = NameDSL.interpret p' a'
+                let nextProgram = cont partialResult
+                return! run ctx nextProgram
+
+            | Step(ObjectProcedure(p, a, cont)) ->
+                let p' = runEffect ctx p
+                let a' = runEffect ctx a
+                let! partialResult = ObjectDSL.interpret p' a'
+                let nextProgram = cont partialResult
+                return! run ctx nextProgram
                 
-            | Free(PinProcedure(p, a, cont)) ->
-                let! partialResult = PinDSL.interpret p a
-                let contArg = IpfsDSLResult<_>.bind partialResult
-                let nextProgram = cont contArg
-                return! run finalizer nextProgram
+            | Step(PinProcedure(p, a, cont)) ->
+                let p' = runEffect ctx p
+                let a' = runEffect ctx a
+                let! partialResult = PinDSL.interpret p' a'
+                let nextProgram = cont partialResult
+                return! run ctx nextProgram
 
-            | Free(PubSubProcedure(p, a, cont)) ->
-                let! partialResult = PubSubDSL.interpret p a
-                let contArg = IpfsDSLResult<_>.bind partialResult
-                let nextProgram = cont contArg
-                return! run finalizer nextProgram
+            | Step(PubSubProcedure(p, a, cont)) ->
+                let p' = runEffect ctx p
+                let a' = runEffect ctx a
+                let! partialResult = PubSubDSL.interpret p' a'
+                let nextProgram = cont partialResult
+                return! run ctx nextProgram
 
-            | Free(SwarmProcedure(p, a, cont)) ->
-                let! partialResult = SwarmDSL.interpret p a
-                let contArg = IpfsDSLResult<_>.bind partialResult
-                let nextProgram = cont contArg
-                return! run finalizer nextProgram
+            | Step(SwarmProcedure(p, a, cont)) ->
+                let p' = runEffect ctx p
+                let a' = runEffect ctx a
+                let! partialResult = SwarmDSL.interpret p' a'
+                let nextProgram = cont partialResult
+                return! run ctx nextProgram
         }

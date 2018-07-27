@@ -2,69 +2,65 @@
 
 [<AutoOpen>]
 module Programs =
+    open FSharpPlus
     open System.IO
     open Ipfs.CoreApi
     open Ipfs.Api
     open Ipfs.DSL
     open Ipfs
 
-    let usingDefaultPeersProgram (client:IpfsClient) (receiver:'a -> Async<unit>) (cont:IpfsClientProgram<'a,'b>) = ipfs {
-        let command = 
-            BootstrapProcedure(
-                BootstrapDSL.addDefaults client,
-                BootstrapDSLArgs.prepareAddDefaults Cancellation.dontUse,
-                fun _ -> IpfsDSL.run receiver cont)
-        return! liftFree command
-    }
+    let useDefaults (client:IpfsClient) (continuation:BootstrapDSLResultContext<'a>) =
+        BootstrapProcedure(
+            Effects.constant (BootstrapDSL.addDefaults client),
+            Effects.constant (BootstrapDSLArgs.prepareAddDefaults Cancellation.dontUse),
+            continuation) |> liftFreer
+       
+    type StartContext =
+        | AddStream of Stream * fn:string * fo:AddFileOptions
 
-    let addFileStreamProgram (client:IpfsClient) (file:Stream) (name:string) (options:AddFileOptions) (receiver:Cid -> Async<unit>) (cont:Cid -> IpfsClientProgram<Async<unit>,'b>)= ipfs {
-        let command =
-            FileSystemProcedure(
-                FileSystemDSL.addStream client,
-                FileSystemDSLArgs.prepareAddStream file name options Cancellation.dontUse,
-                fun r ->
-                    match r with
+    type EndContext =
+        | Finished of IFileSystemNode
 
-                    | FileSystemR(AddStreamResult(futureNode)) -> async {
-                        let! node = futureNode
-                        let cont' = cont node.Id
-                        do! receiver node.Id
-                        do! IpfsDSL.run (fun x -> x) cont'}
+    type Ctx =
+        | Start of StartContext
+        | End of EndContext
 
-                    | _ -> async { return ()})
-        return! liftFree command
-    }
+    let addStreamArgs : FileSystemDSLArgsEffect<Ctx> =
+        fun ctx ->
+            match ctx with
 
-    let readStreamProgram (client:IpfsClient) (id:Cid) (receiver: Stream -> Async<unit>) = ipfs {
-        let command =
-            BlockProcedure(
-                BlockDSL.get client,
-                BlockDSLArgs.prepareGet id Cancellation.dontUse,
-                fun r ->
-                    match r with
-                    
-                    | BlockR(GetResult(futureDataBlock)) -> async {
-                        let! dataBlock = futureDataBlock
-                        do! receiver dataBlock.DataStream}
-                        
-                    | _ -> async { return ()})
-        return! liftFree command
-    }
+            | Start(sctx) ->
 
-    let writeReadStreamProgram (client:IpfsClient) (file:Stream) (name:string) = ipfs {
-        let mutable id : Cid = null
+                match sctx with
+                | AddStream(s, fn, fo) ->
+                    FileSystemDSLArgs.prepareAddStream s fn fo Cancellation.dontUse
 
-        let store cid = async { do id <- cid }
-        let work a = async { printf "%A" id }
-
-        let stateConfigurator = fun someWriter -> 
-            usingDefaultPeersProgram client work someWriter
-
-        let reader = fun cid ->
-            readStreamProgram client cid work
-
-        let writer = addFileStreamProgram client file name (AddFileOptions()) store
-        let writerThenReader = writer reader
+            // we don't match on the other case to make the program crash fast,
+            // the DSL assumes the context to be consistent
         
-        return! stateConfigurator writerThenReader
+
+    let addStream (client:IpfsClient) (continuation:FileSystemDSLResultContext<'a>) =
+        FileSystemProcedure(
+            Effects.constant (FileSystemDSL.addStream client),
+            addStreamArgs,
+            continuation) |> liftFreer
+
+    let mutable ctx = monad {
+        File.WriteAllBytes("testFile.bin", [|24uy;55uy;22uy;66uy;0uy;99uy;|])
+        use fs = File.OpenRead("testFile.bin")
+        return! Start(AddStream(fs, "testFile.streamed.bin", AddFileOptions()))
     }
+
+    let finish node = ctx <- End(Finished(node))
+
+    let retrieveCid :FileSystemDSLResultContext<Async<unit>> = 
+        fun result ->
+            match result with
+            | AddStreamResult(afsnode) -> async {
+                let! node = afsnode
+                return finish node }
+
+            | _ -> async {return ()}
+
+    let client = IpfsClient()
+    let r = Async.RunSynchronously (IpfsDSL.run ctx (addStream client retrieveCid))
