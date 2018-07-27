@@ -11,47 +11,59 @@ A declarative embedded language for building compositional programs and protocol
 The following lazy computation expression yields an AST that captures the notion of adding a in-memory stream to the local IPFS node, which can be reasoned about and transformed.
 
 ```fsharp
-let addFileStreamProgram (client:IpfsClient) (file:Stream) (name:string) (options:AddFileOptions) (receiver:Cid -> Async<unit>) (cont:Cid -> IpfsClientProgram<Async<unit>,'b>)= ipfs {
-        let command =
-            // which sub-DSL?
-            FileSystemProcedure(
-                // where to invoke?
-                FileSystemDSL.addStream client,
-                // prepare the arguments
-                FileSystemDSLArgs.prepareAddStream file name options Cancellation.dontUse,
-                // and decide what to do with results
-                fun r ->
-                    match r with
+type StartContext =
+    | AddStream of Stream * fn:string * fo:AddFileOptions
 
-                    // no escaping from the async monad
-                    | FileSystemR(AddStreamResult(futureNode)) -> async {
-                        let! node = futureNode
-                        let cont' = cont node.Id
-                        // use the receiver to implement shared memory model
-                        do! receiver node.Id
-                        // optionally, invoke another program
-                        do! IpfsDSL.run (fun x -> x) cont'}
+type EndContext =
+    | Finished of IFileSystemNode
 
-                    | _ -> async { return ()})
-        // don't forget to lift the command into a program
-        return! liftFree command
-    }
+type Ctx =
+    | Start of StartContext
+    | End of EndContext
+
+let addStreamArgs : FileSystemDSLArgsEffect<Ctx> =
+    fun ctx ->
+        match ctx with
+
+        | Start(sctx) ->
+
+            match sctx with
+            | AddStream(s, fn, fo) ->
+                FileSystemDSLArgs.prepareAddStream s fn fo Cancellation.dontUse
+
+        // we don't match on the other case to make the program crash fast,
+        // the DSL assumes the context to be consistent
+        
+
+let addStream (client:IpfsClient) (continuation:FileSystemDSLResultContext<'a>) =
+    FileSystemProcedure(
+        Effects.constant (FileSystemDSL.addStream client),
+        addStreamArgs,
+        continuation) |> liftFreer
+
+let mutable ctx = monad {
+    File.WriteAllBytes("testFile.bin", [|24uy;55uy;22uy;66uy;0uy;99uy;|])
+    use fs = File.OpenRead("testFile.bin")
+    return! Start(AddStream(fs, "testFile.streamed.bin", AddFileOptions()))
+}
+
+let finish node = ctx <- End(Finished(node))
+
+let retrieveCid :FileSystemDSLResultContext<Async<unit>> = 
+    fun result ->
+        match result with
+        | AddStreamResult(afsnode) -> async {
+            let! node = afsnode
+            return finish node }
+
+        | _ -> async {return ()}
 ```
 
 To run this abstract syntax tree, you would
 
 ```fsharp
-/// captures the result
-let monitor cid = async { do printfn "%A" cid }
-
-/// program that follows
-let continuation = fun cid -> someOtherProgram cid
-
-/// passing parameters to close the free terms
-let programInstance = addFileStreamProgram client file name fileoptions monitor continuation
-
-/// invoke the interpreter
-do IpfsDSL.run monitor programInstance
+let client = IpfsClient()
+let r = Async.RunSynchronously (IpfsDSL.run ctx (addStream client retrieveCid))
 ```
 
 ### What's in the algebra
