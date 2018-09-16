@@ -11,6 +11,7 @@ A declarative embedded language for building compositional programs and protocol
 The following lazy computation expression yields an AST that captures the notion of adding a in-memory stream to the local IPFS node, which can be reasoned about and transformed.
 
 ```fsharp
+// preliminaries, types you would write to model the boundary between your code and mine
 type StartContext =
     | AddStream of Stream * fn:string * fo:AddFileOptions
 
@@ -21,26 +22,25 @@ type Ctx =
     | Start of StartContext
     | End of EndContext
 
+// a context reader
 let addStreamArgs : FileSystemDSLArgsEffect<Ctx> =
-    fun ctx ->
-        match ctx with
-
-        | Start(sctx) ->
-
-            match sctx with
-            | AddStream(s, fn, fo) ->
-                FileSystemDSLArgs.prepareAddStream s fn fo Cancellation.dontUse
+    function
+    | Start(sctx) ->
+        match sctx with
+        | AddStream(s, fn, fo) ->
+            FileSystemDSLArgs.prepareAddStream s fn fo Cancellation.dontUse
 
         // we don't match on the other case to make the program crash fast,
         // the DSL assumes the context to be consistent
         
-
+// a program that uses the file system subDSL
 let addStream (client:IpfsClient) (continuation:FileSystemDSLResultContext<'a>) =
     FileSystemProcedure(
         Effects.constant (FileSystemDSL.addStream client),
         addStreamArgs,
         continuation) |> liftFreer
 
+// context variable
 let mutable ctx = monad {
     File.WriteAllBytes("testFile.bin", [|24uy;55uy;22uy;66uy;0uy;99uy;|])
     use fs = File.OpenRead("testFile.bin")
@@ -49,17 +49,17 @@ let mutable ctx = monad {
 
 let finish node = ctx <- End(Finished(node))
 
+// a continuation that receives the result
 let retrieveCid :FileSystemDSLResultContext<Async<unit>> = 
-    fun result ->
-        match result with
-        | AddStreamResult(afsnode) -> async {
-            let! node = afsnode
-            return finish node }
+    function
+    | AddStreamResult(afsnode) -> async {
+        let! node = afsnode
+        return finish node }
 
-        | _ -> async {return ()}
+    | _ -> async {return ()}
 ```
 
-To run this abstract syntax tree, you would
+To run this abstract fragment, you would
 
 ```fsharp
 let client = IpfsClient()
