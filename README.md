@@ -99,25 +99,32 @@ Generally the IPFS DSL wraps around the lower-level API in the following way:
 
 #### Typeparams and free
 
-**'Out** - DagDSL includes a method that deserializes a JSON object to a native .NET object. That method gets parameterized with the 'Out parameter even if you don't use the DagDSL in your program because it's subsumed to the main IpfsDSL. If do use it, remember that you can **flatMapR** to change the return type.
+**Next** - is the type of the value returned when the program terminates.
 
-The other and more important typeparam is **'Cont**, it is used to capture the type of the next step of your program. Examine the free monad construction for the **IpfsDSL**.
+**Context** - is the type that the effectful branching is parameterized by. When a IpfsClientProgram branches, the path it takes depends on the state of the **Context** available.
+
+**Produces** - the type that is read from the **Context** when deciding how to branch.
+
+**DagOut** - DagDSL includes a method that deserializes a JSON object to a native .NET object. That method gets parameterized with the DagOut type parameter even if you don't use the DagDSL in your program because it's subsumed to the main IpfsDSL. If you do use it, remember that you can **flatMapR** to change the return type when constructing ASTs.
 
 ```fsharp
-// the "free monad", also called a program, this little recursive structure models all possible
+// the "freer monad", also called a program, this little recursive structure models all possible
 // execution scenarios of using the IPFS API with the embedded langauge, more precisely,
-// the following two can occur:
-// (1) the program you write never terminates, and gets stuck in an infinite recursive loop
-// (2) the program iterates recursively until it reaches a value, which it returns and terminates
-type IpfsClientProgram<'Cont,'R> =
-    // Free, the recursive step,
-    // a statement in the embedded language about the next step in the program
-    | Free of IpfsDSL<IpfsClientProgram<'Cont,'R>,'R>
+// the following three can occur at each evaluation step:
+// (1) the program steps by performing an instruction of the embedded language
+// (2) the program branches by producing a visible effect (where you plug in your context),
+//     and promises to step after getting the result of the effect
+// (3) the program reaches a value of type 'Next, returns it and terminates
+type IpfsClientProgram<'Next, 'Context, 'Produces, 'DagOut> =
 
-    // Return, the final state,
-    // a pure value returned by the program,
-    // or another program
-    | Return of 'Cont
+        // an expression in the embedded language about the next step in the program
+        | Step of program:IpfsDSL<IpfsClientProgram<'Next,'Context,'Produces,'DagOut>,'Context,'DagOut>
+    
+        // a branching step depending on the result of the effectful computation
+        | Branch of visible:Effect<'Context,'Produces> * program:('Produces -> IpfsDSL<IpfsClientProgram<'Next,'Context,'Produces,'DagOut>,'Context,'DagOut>)
+
+        // the final step, produces a value (or often, a new program!)
+        | Return of value:'Next
 ```
 
 ## Acknowledgements
