@@ -25,24 +25,19 @@ module Programs =
         | Start of StartContext
         | End of EndContext
 
-    let addStreamArgs : FileSystemDSLArgsEffect<Ctx> =
-        fun ctx ->
-            match ctx with
-
-            | Start(sctx) ->
-
-                match sctx with
-                | AddStream(s, fn, fo) ->
-                    FileSystemDSLArgs.prepareAddStream s fn fo Cancellation.dontUse
-
-            // we don't match on the other case to make the program crash fast,
-            // the DSL assumes the context to be consistent
-        
-
     let addStream (client:IpfsClient) (continuation:FileSystemDSLResultContext<'a>) =
         FileSystemProcedure(
             Effects.constant (FileSystemDSL.addStream client),
-            addStreamArgs,
+            (fun ctx ->
+                match ctx with
+                | Start(sctx) ->
+                // we don't match on the other case to make the program crash fast,
+                // the DSL assumes the context to be consistent
+                
+                    match sctx with
+                    | AddStream(s, fn, fo) ->
+                        FileSystemDSLArgs.prepareAddStream s fn fo Cancellation.dontUse),
+                        
             continuation) |> liftFreer
 
     let mutable ctx = monad {
