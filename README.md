@@ -11,52 +11,52 @@ A declarative embedded language for building compositional programs and protocol
 The following lazy computation expression yields an AST that captures the notion of adding a in-memory stream to the local IPFS node, which can be reasoned about and transformed.
 
 ```fsharp
-// preliminaries, types you would write to model the boundary between your code and mine
-type StartContext =
-    | AddStream of Stream * fn:string * fo:AddFileOptions
+    // preliminaries, types you would write to model the boundary between your code and mine
+    type StartContext =
+        | AddStream of Stream * fn:string * fo:AddFileOptions
 
-type EndContext =
-    | Finished of IFileSystemNode
+    type EndContext =
+        | Finished of IFileSystemNode
 
-type Ctx =
-    | Start of StartContext
-    | End of EndContext
-
-// a context reader
-let addStreamArgs : FileSystemDSLArgsEffect<Ctx> =
-    function
-    | Start(sctx) ->
-        match sctx with
-        | AddStream(s, fn, fo) ->
-            FileSystemDSLArgs.prepareAddStream s fn fo Cancellation.dontUse
-
-        // we don't match on the other case to make the program crash fast,
-        // the DSL assumes the context to be consistent
+    type Ctx =
+        | Start of StartContext
+        | End of EndContext
         
-// a program that uses the file system subDSL
-let addStream (client:IpfsClient) (continuation:FileSystemDSLResultContext<'a>) =
-    FileSystemProcedure(
-        Effects.constant (FileSystemDSL.addStream client),
-        addStreamArgs,
-        continuation) |> liftFreer
+    // a program that uses the file system subDSL
+    let addStream (client:IpfsClient) (continuation:FileSystemDSLResultContext<'a>) =
+        FileSystemProcedure(
+            Effects.constant (FileSystemDSL.addStream client),
+            // a context reader
+            (fun ctx ->
+                match ctx with
+                | Start(sctx) ->
+                // we don't match on the other case to make the program crash fast,
+                // the DSL assumes the context to be consistent
+                
+                    match sctx with
+                    | AddStream(s, fn, fo) ->
+                        FileSystemDSLArgs.prepareAddStream s fn fo Cancellation.dontUse),
+                        
+            continuation) |> liftFreer
+            
+    // context variable
+    let mutable ctx = monad {
+        File.WriteAllBytes("testFile.bin", [|24uy;55uy;22uy;66uy;0uy;99uy;|])
+        use fs = File.OpenRead("testFile.bin")
+        return! Start(AddStream(fs, "testFile.streamed.bin", AddFileOptions()))
+    }
 
-// context variable
-let mutable ctx = monad {
-    File.WriteAllBytes("testFile.bin", [|24uy;55uy;22uy;66uy;0uy;99uy;|])
-    use fs = File.OpenRead("testFile.bin")
-    return! Start(AddStream(fs, "testFile.streamed.bin", AddFileOptions()))
-}
+    let finish node = ctx <- End(Finished(node))
 
-let finish node = ctx <- End(Finished(node))
+    // a continuation that receives the result
+    let retrieveCid :FileSystemDSLResultContext<Async<unit>> = 
+        fun result ->
+            match result with
+            | AddStreamResult(afsnode) -> async {
+                let! node = afsnode
+                return finish node }
 
-// a continuation that receives the result
-let retrieveCid :FileSystemDSLResultContext<Async<unit>> = 
-    function
-    | AddStreamResult(afsnode) -> async {
-        let! node = afsnode
-        return finish node }
-
-    | _ -> async {return ()}
+            | _ -> async {return ()}
 ```
 
 To run this abstract fragment, you would
